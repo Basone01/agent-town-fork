@@ -19,13 +19,32 @@ function taskStatusLabel(status: TaskItem["status"]) {
   }
 }
 
-export default function TaskPanel({ tasks }: { tasks: TaskItem[] }) {
+export default function TaskPanel({
+  tasks,
+  onExpand,
+}: {
+  tasks: TaskItem[];
+  onExpand: () => void;
+}) {
   const runningTasks = tasks.filter((task) =>
     ["running", "submitted", "queued", "returning"].includes(task.status),
   );
 
   return (
-    <HudFlyout title="Tasks" subtitle={`${runningTasks.length} active / ${tasks.length} total`}>
+    <HudFlyout
+      title="Tasks"
+      subtitle={`${runningTasks.length} active / ${tasks.length} total`}
+      headerAction={
+        <button
+          type="button"
+          className="pixel-button pixel-button--primary"
+          style={{ fontSize: 7, padding: "4px 8px" }}
+          onClick={onExpand}
+        >
+          Expand
+        </button>
+      }
+    >
       <div className="hud-list">
         {tasks.length === 0 ? (
           <div className="hud-empty">No tasks yet.</div>

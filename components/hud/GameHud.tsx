@@ -16,6 +16,7 @@ import ChatPanel from "./ChatPanel";
 import TaskPanel from "./TaskPanel";
 import WorkerPanel from "./WorkerPanel";
 import SeatManagerModal from "./SeatManagerModal";
+import TaskViewModal from "./TaskViewModal";
 import MusicControls from "./MusicControls";
 import OnboardingOverlay from "./OnboardingOverlay";
 
@@ -24,6 +25,7 @@ export default function GameHud() {
   const bgm = useBgm();
   const [openPanel, setOpenPanel] = useState<HudPanelId | null>(null);
   const [seatManagerOpen, setSeatManagerOpen] = useState(false);
+  const [taskViewOpen, setTaskViewOpen] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(
     () => !loadOnboardingDone() && !loadGatewayConfig(),
   );
@@ -126,7 +128,9 @@ export default function GameHud() {
         <div className="hud-topright-flyout">
           {openPanel === "music" ? <MusicControls bgm={bgm} /> : null}
           {openPanel === "connection" ? <ConnectionPanel /> : null}
-          {openPanel === "tasks" ? <TaskPanel tasks={visibleTasks} /> : null}
+          {openPanel === "tasks" ? (
+            <TaskPanel tasks={visibleTasks} onExpand={() => setTaskViewOpen(true)} />
+          ) : null}
           {openPanel === "workers" ? (
             <WorkerPanel seats={state.seats} onOpenManager={() => setSeatManagerOpen(true)} />
           ) : null}
@@ -183,6 +187,8 @@ export default function GameHud() {
         onClose={() => setSeatManagerOpen(false)}
         seats={state.seats}
       />
+
+      <TaskViewModal open={taskViewOpen} onClose={() => setTaskViewOpen(false)} />
 
       {showOnboarding && <OnboardingOverlay onDone={() => setShowOnboarding(false)} />}
     </div>
