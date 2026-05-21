@@ -22,9 +22,11 @@ function taskStatusLabel(status: TaskItem["status"]) {
 export default function TaskPanel({
   tasks,
   onExpand,
+  onSelectTask,
 }: {
   tasks: TaskItem[];
   onExpand: () => void;
+  onSelectTask: (taskId: string) => void;
 }) {
   const runningTasks = tasks.filter((task) =>
     ["running", "submitted", "queued", "returning"].includes(task.status),
@@ -50,7 +52,13 @@ export default function TaskPanel({
           <div className="hud-empty">No tasks yet.</div>
         ) : (
           tasks.map((task) => (
-            <div key={task.taskId} className="hud-list__item">
+            <button
+              key={task.taskId}
+              type="button"
+              className="hud-list__item"
+              onClick={() => onSelectTask(task.taskId)}
+              title="Open in Task View"
+            >
               <div className="hud-list__top">
                 <span className={`hud-status hud-status--${task.status}`}>
                   {taskStatusLabel(task.status)}
@@ -58,7 +66,7 @@ export default function TaskPanel({
                 <span>{formatRelativeTime(task.completedAt ?? task.createdAt)}</span>
               </div>
               <div className="hud-list__title">{task.message}</div>
-            </div>
+            </button>
           ))
         )}
       </div>

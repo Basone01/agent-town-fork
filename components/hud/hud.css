@@ -420,6 +420,21 @@
   color: var(--pixel-text);
 }
 
+button.hud-list__item {
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  transition:
+    background 0.1s ease,
+    border-color 0.1s ease;
+}
+
+button.hud-list__item:hover {
+  background: rgba(0, 0, 0, 0.55);
+  border-color: var(--pixel-accent);
+}
+
 .hud-list__top,
 .hud-workers__top {
   display: flex;

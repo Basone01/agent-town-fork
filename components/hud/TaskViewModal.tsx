@@ -40,7 +40,15 @@ function statusLabel(status: TaskStatus): string {
   return status;
 }
 
-export default function TaskViewModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+export default function TaskViewModal({
+  open,
+  onClose,
+  initialTaskId,
+}: {
+  open: boolean;
+  onClose: () => void;
+  initialTaskId?: string;
+}) {
   const { state, assignTask } = useStudio();
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
   const [search, setSearch] = useState("");
@@ -103,6 +111,17 @@ export default function TaskViewModal({ open, onClose }: { open: boolean; onClos
     }
     return map;
   }, [state.tasks]);
+
+  // Opened on a specific task (clicked from the flyout): select it and clear
+  // the filter/search so a stale filter can't hide the row the user picked.
+  useEffect(() => {
+    if (!open || !initialTaskId) return;
+    /* eslint-disable react-hooks/set-state-in-effect -- syncing selection to the task that opened the modal */
+    setSelectedId(initialTaskId);
+    setSearch("");
+    setFilter("all");
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [open, initialTaskId]);
 
   // Escape closes (capture phase so it fires even from the inputs).
   useEffect(() => {

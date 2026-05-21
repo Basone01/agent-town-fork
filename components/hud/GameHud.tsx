@@ -26,6 +26,9 @@ export default function GameHud() {
   const [openPanel, setOpenPanel] = useState<HudPanelId | null>(null);
   const [seatManagerOpen, setSeatManagerOpen] = useState(false);
   const [taskViewOpen, setTaskViewOpen] = useState(false);
+  // Task to pre-select when the Task View opens — set when a flyout row is
+  // clicked, cleared on a plain "Expand" so the modal keeps its last selection.
+  const [taskViewInitialId, setTaskViewInitialId] = useState<string | undefined>(undefined);
   const [showOnboarding, setShowOnboarding] = useState(
     () => !loadOnboardingDone() && !loadGatewayConfig(),
   );
@@ -129,7 +132,17 @@ export default function GameHud() {
           {openPanel === "music" ? <MusicControls bgm={bgm} /> : null}
           {openPanel === "connection" ? <ConnectionPanel /> : null}
           {openPanel === "tasks" ? (
-            <TaskPanel tasks={visibleTasks} onExpand={() => setTaskViewOpen(true)} />
+            <TaskPanel
+              tasks={visibleTasks}
+              onExpand={() => {
+                setTaskViewInitialId(undefined);
+                setTaskViewOpen(true);
+              }}
+              onSelectTask={(taskId) => {
+                setTaskViewInitialId(taskId);
+                setTaskViewOpen(true);
+              }}
+            />
           ) : null}
           {openPanel === "workers" ? (
             <WorkerPanel seats={state.seats} onOpenManager={() => setSeatManagerOpen(true)} />
@@ -188,7 +201,11 @@ export default function GameHud() {
         seats={state.seats}
       />
 
-      <TaskViewModal open={taskViewOpen} onClose={() => setTaskViewOpen(false)} />
+      <TaskViewModal
+        open={taskViewOpen}
+        onClose={() => setTaskViewOpen(false)}
+        initialTaskId={taskViewInitialId}
+      />
 
       {showOnboarding && <OnboardingOverlay onDone={() => setShowOnboarding(false)} />}
     </div>
