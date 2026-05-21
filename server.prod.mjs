@@ -1,9 +1,9 @@
 /**
  * Production server for Agent Town (npx / standalone).
  *
- * Reads the Next.js config from the standalone build output and serves the
- * app plus the Claude bridge (WebSocket /api/gateway backed by the local
- * `claude` CLI) and the localhost-only internal endpoints for MCP dispatch.
+ * Serves the app plus an agent bridge selected by AGENT_PROVIDER —
+ * `claude` (local Claude Code CLI, default) or `auggie` (Augment CLI) —
+ * and the localhost-only internal endpoints for MCP worker dispatch.
  */
 
 import { createServer } from "node:http";
@@ -12,10 +12,16 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import {
   attachClaudeBridge,
-  dispatchToWorker,
-  validateDispatchSecret,
-  setWorkerRoster,
+  dispatchToWorker as claudeDispatch,
+  validateDispatchSecret as claudeValidate,
+  setWorkerRoster as claudeSetRoster,
 } from "./lib/claude-bridge.mjs";
+import {
+  attachAuggieBridge,
+  dispatchToWorker as auggieDispatch,
+  validateDispatchSecret as auggieValidate,
+  setWorkerRoster as auggieSetRoster,
+} from "./lib/auggie-bridge.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -26,8 +32,15 @@ const log = {
   error: console.error.bind(console, prefix),
 };
 
-// Workers run in the directory Agent Town was launched from — capture it
-// before chdir() points us at the standalone build directory.
+// ── Provider selection ──
+const AGENT_PROVIDER = process.env.AGENT_PROVIDER === "auggie" ? "auggie" : "claude";
+const isAuggie = AGENT_PROVIDER === "auggie";
+const dispatchToWorker = isAuggie ? auggieDispatch : claudeDispatch;
+const validateDispatchSecret = isAuggie ? auggieValidate : claudeValidate;
+const setWorkerRoster = isAuggie ? auggieSetRoster : claudeSetRoster;
+
+// Claude workers run in the directory Agent Town was launched from — capture
+// it before chdir() points us at the standalone build directory.
 process.env.CLAUDE_WORKSPACE_DIR = process.env.CLAUDE_WORKSPACE_DIR ?? process.cwd();
 
 // Load standalone config before importing next.
@@ -45,7 +58,7 @@ process.chdir(__dirname);
 const app = next({ dev: false, dir: __dirname });
 const handle = app.getRequestHandler();
 
-// ── Internal dispatch endpoint (MCP tool → claude bridge) ──
+// ── Internal dispatch endpoint (MCP tool → active bridge) ──
 
 function handleDispatch(req, res) {
   if (req.method !== "POST") {
@@ -144,14 +157,18 @@ app
       handle(req, res);
     });
 
-    attachClaudeBridge(server, WebSocket, WebSocketServer);
+    if (isAuggie) {
+      attachAuggieBridge(server, WebSocket, WebSocketServer);
+    } else {
+      attachClaudeBridge(server, WebSocket, WebSocketServer);
+    }
 
     server.listen(port, () => {
       log.info("");
       log.info("  \x1b[36m\x1b[1mAgent Town\x1b[0m is running!");
       log.info("");
       log.info(`  > Local:    \x1b[4mhttp://localhost:${port}\x1b[0m`);
-      log.info("  > Provider: Claude (local claude CLI)");
+      log.info(`  > Provider: ${isAuggie ? "Auggie (auggie CLI)" : "Claude (local claude CLI)"}`);
       log.info("");
     });
   })

@@ -26,16 +26,22 @@ Agent Town is a pixel RPG for your AI workers. You walk around an office as the
 boss, assign tasks face-to-face, and watch your agents work in real time — not
 in a log, but in the room.
 
-This fork runs entirely on the **local [Claude CLI](https://claude.com/claude-code)**
-(Claude Code). No external gateway, no separate runtime: every worker is a
-`claude` process spawned on your own machine. If `claude` works in your
-terminal, Agent Town works.
+This fork runs entirely on a **local CLI** — no external gateway, no separate
+runtime. Every worker is a child process spawned on your own machine. Two
+providers are supported, selected at startup with `--provider`:
+
+- **`claude`** _(default)_ — the [Claude Code](https://claude.com/claude-code) CLI,
+  with real-time streaming, per-seat model selection, and resumable sessions.
+- **`auggie`** — the [Augment](https://www.augmentcode.com/) CLI.
+
+If the provider's CLI works in your terminal, Agent Town works.
 
 ## Prerequisites
 
 - **Node.js** ≥ 18
-- **[Claude Code](https://claude.com/claude-code)** installed and authenticated
-  — verify with `claude --version` and a quick `claude -p "hello"`.
+- The CLI for your chosen provider, installed and authenticated:
+  - `claude` _(default)_ — verify with `claude --version`
+  - `auggie` — verify with `auggie --version`
 
 ## Quick Start
 
@@ -60,10 +66,14 @@ variables work in every mode.
 
 | Flag / env var                           | Default     | Purpose                                      |
 | ----------------------------------------- | ----------- | -------------------------------------------- |
+| `--provider` / `AGENT_PROVIDER`            | `claude`    | Agent provider — `claude` or `auggie`        |
 | `--port` / `PORT`                          | `3000`      | Port to listen on                            |
-| `--workspace` / `CLAUDE_WORKSPACE_DIR`     | launch dir  | Directory workers operate in                 |
-| `--model` / `CLAUDE_MODEL`                 | `sonnet`    | Default model — `opus`, `sonnet`, or `haiku` |
-| `CLAUDE_PERMISSION_MODE`                   | `bypassPermissions` | Permission mode for spawned workers  |
+| `--workspace` / `CLAUDE_WORKSPACE_DIR`     | launch dir  | Directory Claude workers operate in          |
+| `--model` / `CLAUDE_MODEL`                 | `sonnet`    | Default Claude model — `opus`, `sonnet`, `haiku` |
+| `CLAUDE_PERMISSION_MODE`                   | `bypassPermissions` | Permission mode for spawned Claude workers |
+
+The `--workspace`, `--model`, and `CLAUDE_*` settings apply to the `claude`
+provider only.
 
 > **⚠️ Permissions.** Workers run with `bypassPermissions` so they can edit
 > files and run commands without prompting — that is the whole point of an
@@ -108,25 +118,30 @@ remember prior tasks across server restarts.
 ## Architecture
 
 The browser speaks one frame-based RPC protocol over a WebSocket. It never
-talks to a model directly — the **Claude bridge** terminates that protocol and
-drives the local `claude` CLI.
+talks to a model directly — a **bridge** terminates that protocol and drives
+the local CLI. `AGENT_PROVIDER` selects which bridge attaches at startup.
 
 ```mermaid
 flowchart LR
     UI[Game UI]
-    Bridge[Claude Bridge]
-    CLI[claude CLI]
+    Bridge[Agent Bridge]
+    CLI[claude / auggie CLI]
 
     UI -->|WS /api/gateway| Bridge
-    Bridge -->|spawn, stream-json| CLI
+    Bridge -->|spawn| CLI
 ```
 
 - **Game UI:** Phaser office + React HUD. Talks only to the bridge.
-- **Claude bridge** (`lib/claude-bridge.mjs`): emulates the gateway protocol,
-  spawns one `claude` process per task, and maps the `stream-json` event stream
-  onto gateway events. Imported by both the dev server and the standalone build.
+- **Claude bridge** (`lib/claude-bridge.mjs`): spawns one `claude` process per
+  task and maps its `stream-json` output onto gateway events — live bubbles,
+  collapsible tool calls, token metering.
+- **Auggie bridge** (`lib/auggie-bridge.mjs`): the same gateway protocol,
+  backed by the `auggie` CLI.
 - **MCP dispatch** (`lib/mcp/agent-town-mcp.mjs`): a stdio MCP server attached
   to workers so the main agent can delegate to specific seats.
+
+Both bridges ship with the dev server and the standalone build; only the one
+named by `AGENT_PROVIDER` is attached.
 
 ## Tech stack
 
@@ -134,7 +149,7 @@ flowchart LR
 | ------------- | --------------------------------------------------- |
 | App           | Next.js 16, React 19, TypeScript                    |
 | Game          | Phaser 3, Tiled maps, pixel sprite sheets           |
-| Agent runtime | Local [Claude Code](https://claude.com/claude-code) CLI |
+| Agent runtime | Local [Claude Code](https://claude.com/claude-code) or [Auggie](https://www.augmentcode.com/) CLI |
 | State         | React context + reducer + typed event bus           |
 
 ## Assets

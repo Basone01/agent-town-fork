@@ -1,3 +1,13 @@
+import type { AgentProvider } from "@/types/game";
+
+/**
+ * Returns the configured agent provider.
+ * Set via NEXT_PUBLIC_AGENT_PROVIDER env var (available client-side).
+ */
+export function getAgentProvider(): AgentProvider {
+  return process.env.NEXT_PUBLIC_AGENT_PROVIDER === "auggie" ? "auggie" : "claude";
+}
+
 export function getDefaultGatewayUrl() {
   if (process.env.NEXT_PUBLIC_GATEWAY_URL) {
     return process.env.NEXT_PUBLIC_GATEWAY_URL;

@@ -6,7 +6,7 @@
  * 2. Copy public/        → .next/standalone/public/
  * 3. Copy .next/static/  → .next/standalone/.next/static/
  * 4. Copy server.prod.mjs → .next/standalone/server.prod.mjs
- * 5. Copy the Claude bridge + MCP server → .next/standalone/lib/
+ * 5. Copy the agent bridges + MCP server → .next/standalone/lib/
  */
 
 import { existsSync, readdirSync, statSync, mkdirSync, rmSync, renameSync, cpSync } from "node:fs";
@@ -84,15 +84,16 @@ console.log("  done  .next/static/ → standalone/.next/static/");
 cpSync(resolve(root, "server.prod.mjs"), resolve(standalone, "server.prod.mjs"));
 console.log("  done  server.prod.mjs → standalone/server.prod.mjs");
 
-// --- 5. Copy the Claude bridge + MCP server ---
+// --- 5. Copy the agent bridges + MCP server ---
 // These plain .mjs files are not part of the Next.js build graph, so the
 // standalone tracer never copies them — do it explicitly.
 mkdirSync(resolve(standalone, "lib", "mcp"), { recursive: true });
 cpSync(resolve(root, "lib", "claude-bridge.mjs"), resolve(standalone, "lib", "claude-bridge.mjs"));
+cpSync(resolve(root, "lib", "auggie-bridge.mjs"), resolve(standalone, "lib", "auggie-bridge.mjs"));
 cpSync(
   resolve(root, "lib", "mcp", "agent-town-mcp.mjs"),
   resolve(standalone, "lib", "mcp", "agent-town-mcp.mjs"),
 );
-console.log("  done  lib/claude-bridge.mjs + lib/mcp/ → standalone/lib/");
+console.log("  done  lib/{claude,auggie}-bridge.mjs + lib/mcp/ → standalone/lib/");
 
 console.log("\n  Standalone package ready.\n");

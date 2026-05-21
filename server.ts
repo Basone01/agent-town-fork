@@ -1,8 +1,9 @@
 /**
  * Custom Next.js dev server for Agent Town.
  *
- * Hosts the app and the Claude bridge: a WebSocket endpoint at
- * /api/gateway that the browser talks to, backed by the local `claude` CLI.
+ * Hosts the app and an agent bridge: a WebSocket endpoint at /api/gateway
+ * that the browser talks to. The bridge is selected by AGENT_PROVIDER —
+ * `claude` (local Claude Code CLI, default) or `auggie` (Augment CLI).
  * Also exposes localhost-only internal endpoints for MCP worker dispatch.
  */
 
@@ -12,23 +13,39 @@ import next from "next";
 import { createLogger } from "./lib/logger";
 import {
   attachClaudeBridge,
-  dispatchToWorker,
-  validateDispatchSecret,
-  setWorkerRoster,
+  dispatchToWorker as claudeDispatch,
+  validateDispatchSecret as claudeValidate,
+  setWorkerRoster as claudeSetRoster,
 } from "./lib/claude-bridge.mjs";
+import {
+  attachAuggieBridge,
+  dispatchToWorker as auggieDispatch,
+  validateDispatchSecret as auggieValidate,
+  setWorkerRoster as auggieSetRoster,
+} from "./lib/auggie-bridge.mjs";
 
 const log = createLogger("Server");
 
 const dev = process.env.NODE_ENV !== "production";
 const port = parseInt(process.env.PORT ?? "3000", 10);
 
-// Workers run in this directory. Resolved once so it is stable across requests.
+// ── Provider selection ──
+const AGENT_PROVIDER = process.env.AGENT_PROVIDER === "auggie" ? "auggie" : "claude";
+const isAuggie = AGENT_PROVIDER === "auggie";
+// Expose the provider to client code (compiled on-demand in dev).
+process.env.NEXT_PUBLIC_AGENT_PROVIDER = AGENT_PROVIDER;
+
+const dispatchToWorker = isAuggie ? auggieDispatch : claudeDispatch;
+const validateDispatchSecret = isAuggie ? auggieValidate : claudeValidate;
+const setWorkerRoster = isAuggie ? auggieSetRoster : claudeSetRoster;
+
+// Claude workers run in this directory. Resolved once so it is stable.
 process.env.CLAUDE_WORKSPACE_DIR = process.env.CLAUDE_WORKSPACE_DIR ?? process.cwd();
 
 const app = next({ dev });
 const handle = app.getRequestHandler();
 
-// ── Internal dispatch endpoint (MCP tool → claude bridge) ──
+// ── Internal dispatch endpoint (MCP tool → active bridge) ──
 
 function handleDispatch(req: IncomingMessage, res: ServerResponse) {
   if (req.method !== "POST") {
@@ -133,11 +150,15 @@ app
       handle(req, res);
     });
 
-    attachClaudeBridge(server, WebSocket, WebSocketServer);
+    if (isAuggie) {
+      attachAuggieBridge(server, WebSocket, WebSocketServer);
+    } else {
+      attachClaudeBridge(server, WebSocket, WebSocketServer);
+    }
 
     server.listen(port);
     log.info(`Ready on http://localhost:${port}`);
-    log.info(`Provider: Claude (local claude CLI)`);
+    log.info(`Provider: ${isAuggie ? "Auggie (auggie CLI)" : "Claude (local claude CLI)"}`);
   })
   .catch((err) => {
     log.error("Failed to prepare Next.js:", err);

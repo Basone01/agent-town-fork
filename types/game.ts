@@ -101,6 +101,9 @@ export interface ToolChatMessage extends ChatMessageBase {
 
 export type ChatMessage = TextChatMessage | ToolChatMessage;
 
+/** Agent execution backend. Selected at startup via AGENT_PROVIDER. */
+export type AgentProvider = "claude" | "auggie";
+
 export interface GatewayConfig {
   url: string;
   token: string;

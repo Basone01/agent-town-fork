@@ -2,15 +2,20 @@
 
 import { useStudio } from "@/lib/store";
 import { STATUS_LABELS } from "@/lib/constants";
+import { getAgentProvider } from "@/lib/utils";
 import HudFlyout from "./HudFlyout";
 
 /**
  * Connection panel — status only.
  *
- * Agent Town talks to a local Claude bridge, so there is no gateway URL or
- * token to enter. The store auto-connects on load; this panel just surfaces
- * status and a manual reconnect control.
+ * Both providers (claude / auggie) are local bridges, so there is no gateway
+ * URL or token to enter. The store auto-connects on load; this panel just
+ * surfaces status and a manual reconnect control.
  */
+const PROVIDER = getAgentProvider();
+const PROVIDER_NAME = PROVIDER === "auggie" ? "Auggie" : "Claude";
+const PROVIDER_CLI = PROVIDER === "auggie" ? "auggie" : "claude";
+
 export default function ConnectionPanel() {
   const { state, connect, disconnect } = useStudio();
   const isConnected = state.connection === "connected";
@@ -22,15 +27,18 @@ export default function ConnectionPanel() {
     state.connection === "rate_limited";
 
   return (
-    <HudFlyout title="Connection" subtitle={`${STATUS_LABELS[state.connection]} (Claude)`}>
+    <HudFlyout
+      title="Connection"
+      subtitle={`${STATUS_LABELS[state.connection]} (${PROVIDER_NAME})`}
+    >
       <div className="hud-panel__stack">
         <p style={{ color: "var(--pixel-muted)", fontSize: "8px" }}>
-          Workers run on the local <code>claude</code> CLI. Make sure <code>claude</code> is
-          installed and authenticated.
+          Workers run on the local <code>{PROVIDER_CLI}</code> CLI. Make sure{" "}
+          <code>{PROVIDER_CLI}</code> is installed and authenticated.
         </p>
         {isError && (
           <p style={{ color: "var(--pixel-red)", fontSize: "8px" }}>
-            The Claude bridge is unreachable. Try reconnecting.
+            The {PROVIDER_NAME} bridge is unreachable. Try reconnecting.
           </p>
         )}
         {!isConnected && !isConnecting && (
