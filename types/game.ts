@@ -54,6 +54,7 @@ export interface SeatState {
 }
 
 export type TaskStatus =
+  | "draft"
   | "submitted"
   | "queued"
   | "returning"

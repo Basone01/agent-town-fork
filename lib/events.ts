@@ -19,6 +19,8 @@ export interface GameEventMap {
   "subagent-assigned": [runId: string, parentRunId: string, label: string, seatId?: string];
   "open-terminal": [seatId?: string];
   "open-terminal-queue": [seatId: string];
+  /** Reopen a saved draft in the task form for editing. */
+  "edit-draft": [taskId: string];
   "stop-task": [runId: string, seatId: string];
   "terminal-closed": [];
   "new-session-for-seat": [seatId: string];

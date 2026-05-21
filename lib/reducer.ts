@@ -138,6 +138,7 @@ export type Action =
   | { type: "SET_CONNECTION"; status: ConnectionStatus }
   | { type: "ADD_TASK"; task: TaskItem }
   | { type: "UPDATE_TASK"; taskId: string; patch: Partial<TaskItem> }
+  | { type: "REMOVE_TASK"; taskId: string }
   | { type: "APPEND_CHAT"; message: ChatMessage }
   | { type: "APPEND_DELTA"; runId: string; delta: string; actorName?: string }
   | { type: "FINALIZE_ASSISTANT"; runId: string; content: string; actorName?: string }
@@ -193,6 +194,14 @@ export function reducer(state: StudioSnapshot, action: Action): StudioSnapshot {
       return {
         ...state,
         tasks: patchTasks(state.tasks, action.taskId, action.patch),
+      };
+
+    case "REMOVE_TASK":
+      return {
+        ...state,
+        tasks: state.tasks.filter(
+          (task) => task.taskId !== action.taskId && task.runId !== action.taskId,
+        ),
       };
 
     case "APPEND_CHAT":

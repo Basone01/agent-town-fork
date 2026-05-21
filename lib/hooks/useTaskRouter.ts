@@ -162,6 +162,97 @@ export function useTaskRouter(refs: TaskRouterRefs) {
     [refs],
   );
 
+  // Persist a task without dispatching it. A draft never emits "task-assigned",
+  // so no worker routing and no gateway send happen — it just lives in state
+  // (and localStorage) until the user assigns it. Works offline by design.
+  const saveDraft = useCallback(
+    (
+      message: string,
+      seatId?: string,
+      targetSessionKey?: string,
+      workspace?: string,
+      title?: string,
+    ) => {
+      const taskId = refs.nextTaskId();
+      const sessionKey = targetSessionKey ?? refs.activeSessionKey.current ?? MAIN_SESSION_KEY;
+      const actorName = seatId ? resolveSeatLabelForTask(refs.seats.current, seatId) : undefined;
+      refs.dispatch.current({
+        type: "ADD_TASK",
+        task: {
+          taskId,
+          title: title?.trim() || undefined,
+          message,
+          status: "draft",
+          sessionKey,
+          seatId,
+          workspace: workspace?.trim() || undefined,
+          actorName,
+          createdAt: new Date().toISOString(),
+        },
+      });
+    },
+    [refs],
+  );
+
+  // Edit a draft's fields in place, keeping its "draft" status.
+  const updateDraft = useCallback(
+    (taskId: string, patch: { message?: string; title?: string; workspace?: string }) => {
+      const next: Partial<TaskItem> = {};
+      if (patch.message !== undefined) next.message = patch.message;
+      if (patch.title !== undefined) next.title = patch.title.trim() || undefined;
+      if (patch.workspace !== undefined) next.workspace = patch.workspace.trim() || undefined;
+      refs.dispatch.current({ type: "UPDATE_TASK", taskId, patch: next });
+    },
+    [refs],
+  );
+
+  // Promote an existing draft into a live task: flip its status, post the user
+  // bubble, and emit "task-assigned" so the scene routes it like any new task.
+  // Overrides carry fresh field values from the edit form so we never read a
+  // stale tasks ref before the UPDATE_TASK dispatch has flushed.
+  const assignDraft = useCallback(
+    (
+      taskId: string,
+      overrides?: { message?: string; title?: string; workspace?: string; seatId?: string },
+    ) => {
+      const client = refs.clientRef.current;
+      if (!client || client.status !== "connected") return;
+      const task = findTask(refs.tasks.current, taskId);
+      if (!task) return;
+
+      const message = overrides?.message ?? task.message;
+      const seatId = overrides?.seatId ?? task.seatId;
+      const patch: Partial<TaskItem> = { status: "submitted" };
+      if (overrides?.message !== undefined) patch.message = overrides.message;
+      if (overrides?.title !== undefined) patch.title = overrides.title.trim() || undefined;
+      if (overrides?.workspace !== undefined)
+        patch.workspace = overrides.workspace.trim() || undefined;
+      if (overrides?.seatId !== undefined) patch.seatId = overrides.seatId;
+
+      refs.dispatch.current({ type: "UPDATE_TASK", taskId, patch });
+      refs.dispatch.current({
+        type: "APPEND_CHAT",
+        message: {
+          id: chatId(),
+          runId: taskId,
+          role: "user",
+          content: message,
+          timestamp: new Date().toISOString(),
+          sessionKey: task.sessionKey,
+        },
+      });
+      gameEvents.emit("task-assigned", taskId, message, seatId, task.sessionKey);
+    },
+    [refs],
+  );
+
+  const deleteTask = useCallback(
+    (taskId: string) => {
+      refs.dispatch.current({ type: "REMOVE_TASK", taskId });
+    },
+    [refs],
+  );
+
   const finalizeStoppedTask = useCallback(
     (runId: string, seatId?: string) => {
       const task = findTask(refs.tasks.current, runId);
@@ -311,6 +402,10 @@ export function useTaskRouter(refs: TaskRouterRefs) {
 
   return {
     assignTask,
+    saveDraft,
+    updateDraft,
+    assignDraft,
+    deleteTask,
     finalizeStoppedTask,
   };
 }

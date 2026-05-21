@@ -491,6 +491,10 @@ button.hud-list__item:hover {
   color: #f97316;
 }
 
+.hud-status--draft {
+  color: #a78bfa;
+}
+
 .hud-status--empty {
   color: var(--pixel-muted);
 }
@@ -500,6 +504,66 @@ button.hud-list__item:hover {
   text-align: center;
   font-size: 12px;
   color: var(--pixel-muted);
+}
+
+/* ── Task list session groups (flyout) ── */
+
+.hud-list__group {
+  display: flex;
+  flex-direction: column;
+}
+
+.hud-list__group-header {
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border: 1px solid var(--pixel-border);
+  border-radius: var(--pixel-radius-sm);
+  background: rgba(201, 162, 39, 0.06);
+  color: var(--pixel-text);
+  cursor: pointer;
+  font: inherit;
+  transition:
+    background 0.1s ease,
+    border-color 0.1s ease;
+}
+
+.hud-list__group-header:hover {
+  background: rgba(201, 162, 39, 0.14);
+  border-color: var(--pixel-accent);
+}
+
+.hud-list__group-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.hud-list__group-chevron {
+  display: inline-block;
+  width: 8px;
+  font-size: 8px;
+  color: var(--pixel-muted);
+}
+
+.hud-list__group-sub {
+  font-size: 8px;
+  color: var(--pixel-muted);
+  margin-top: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hud-list__group-children {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 0 0 8px;
+}
+
+.hud-list__item--child {
+  opacity: 0.88;
 }
 
 /* --- HUD overlay layout (floating, semi-transparent) --- */

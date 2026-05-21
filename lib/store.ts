@@ -54,6 +54,22 @@ interface StudioContextValue {
     workspace?: string,
     title?: string,
   ) => void;
+  saveDraft: (
+    message: string,
+    seatId?: string,
+    sessionKey?: string,
+    workspace?: string,
+    title?: string,
+  ) => void;
+  updateDraft: (
+    taskId: string,
+    patch: { message?: string; title?: string; workspace?: string },
+  ) => void;
+  assignDraft: (
+    taskId: string,
+    overrides?: { message?: string; title?: string; workspace?: string; seatId?: string },
+  ) => void;
+  deleteTask: (taskId: string) => void;
   updateSeatConfig: (seatId: string, patch: Partial<SeatState>) => void;
   newSession: () => void;
   switchSession: (sessionKey: string) => void;
@@ -302,6 +318,10 @@ export function StudioProvider({ children }: { children: ReactNode }) {
         connect: gateway.connect,
         disconnect: gateway.disconnect,
         assignTask: taskRouter.assignTask,
+        saveDraft: taskRouter.saveDraft,
+        updateDraft: taskRouter.updateDraft,
+        assignDraft: taskRouter.assignDraft,
+        deleteTask: taskRouter.deleteTask,
         updateSeatConfig,
         newSession: session.newSession,
         switchSession: session.switchSession,

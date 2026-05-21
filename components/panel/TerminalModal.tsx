@@ -27,16 +27,24 @@ export default function TerminalModal() {
   const [files, setFiles] = useState<AttachedFile[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [targetSeatId, setTargetSeatId] = useState<string | undefined>(undefined);
-  const { state, assignTask, prepareSessionForSeat } = useStudio();
+  // Set when the modal opened to edit an existing draft instead of creating a
+  // new task. Drives whether submit/save promote-or-update vs. create.
+  const [editingDraftId, setEditingDraftId] = useState<string | undefined>(undefined);
+  const { state, assignTask, saveDraft, updateDraft, assignDraft, prepareSessionForSeat } =
+    useStudio();
   const titleRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isConnected = state.connection === "connected";
-  const canSubmit = isConnected && description.trim().length > 0 && !submitting;
+  const hasDescription = description.trim().length > 0;
+  // Drafting works offline; assigning needs a live gateway connection.
+  const canSaveDraft = hasDescription && !submitting;
+  const canSubmit = isConnected && hasDescription && !submitting;
 
   const close = useCallback(() => {
     setOpen(false);
     setTargetSeatId(undefined);
+    setEditingDraftId(undefined);
     gameEvents.emit("terminal-closed");
   }, []);
 
@@ -46,6 +54,7 @@ export default function TerminalModal() {
     setWorkspace("");
     setFiles([]);
     setSubmitting(false);
+    setEditingDraftId(undefined);
   }, []);
 
   useEffect(() => {
@@ -62,6 +71,24 @@ export default function TerminalModal() {
       unsubQueue();
     };
   }, [prepareSessionForSeat, reset]);
+
+  // Reopen a saved draft: pre-fill every field from the stored task. The draft's
+  // message already holds any inlined attachments as text, so the files list
+  // starts empty — newly attached files append on top of the existing message.
+  useEffect(() => {
+    return gameEvents.on("edit-draft", (taskId) => {
+      const task = state.tasks.find((t) => t.taskId === taskId);
+      if (!task) return;
+      setTitle(task.title ?? "");
+      setDescription(task.message);
+      setWorkspace(task.workspace ?? "");
+      setFiles([]);
+      setSubmitting(false);
+      setTargetSeatId(task.seatId);
+      setEditingDraftId(taskId);
+      setOpen(true);
+    });
+  }, [state.tasks]);
 
   useEffect(() => {
     if (open) setTimeout(() => titleRef.current?.focus(), 50);
@@ -95,11 +122,30 @@ export default function TerminalModal() {
 
   const removeFile = (name: string) => setFiles((prev) => prev.filter((f) => f.name !== name));
 
+  const handleSaveDraft = () => {
+    if (!canSaveDraft) return;
+    setSubmitting(true);
+    const message = composeMessage(description, files);
+    if (editingDraftId) {
+      updateDraft(editingDraftId, { message, title, workspace });
+    } else {
+      saveDraft(message, targetSeatId, undefined, workspace, title);
+    }
+    reset();
+    close();
+  };
+
   const handleSubmit = async () => {
     if (!canSubmit) return;
     setSubmitting(true);
     const message = composeMessage(description, files);
-    assignTask(message, targetSeatId, undefined, workspace, title);
+    if (editingDraftId) {
+      // Editing a draft: carry fresh field values as overrides so the promote
+      // doesn't race the in-place update against a stale tasks snapshot.
+      assignDraft(editingDraftId, { message, title, workspace, seatId: targetSeatId });
+    } else {
+      assignTask(message, targetSeatId, undefined, workspace, title);
+    }
     reset();
     close();
   };
@@ -147,7 +193,9 @@ export default function TerminalModal() {
       >
         {/* Header */}
         <div className="flex items-center justify-between">
-          <div style={{ fontSize: "10px" }}>{">"} New Task</div>
+          <div style={{ fontSize: "10px" }}>
+            {">"} {editingDraftId ? "Edit Draft" : "New Task"}
+          </div>
           <button
             className="pixel-button"
             style={{ fontSize: "8px", padding: "2px 8px" }}
@@ -157,7 +205,7 @@ export default function TerminalModal() {
           </button>
         </div>
 
-        {/* Not connected warning */}
+        {/* Not connected notice — drafting still works offline */}
         {!isConnected && (
           <div
             style={{
@@ -168,7 +216,7 @@ export default function TerminalModal() {
               borderRadius: "var(--pixel-radius-sm)",
             }}
           >
-            Not connected. Use the HUD to connect first.
+            Not connected — you can still save a draft, but assigning needs a connection.
           </div>
         )}
 
@@ -184,7 +232,6 @@ export default function TerminalModal() {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             onKeyDown={handleKeyDown}
-            disabled={!isConnected}
             style={{ width: "100%" }}
           />
         </div>
@@ -197,11 +244,10 @@ export default function TerminalModal() {
           </div>
           <textarea
             className="pixel-input"
-            placeholder={isConnected ? "Describe the task…" : "Connect first…"}
+            placeholder="Describe the task…"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             onKeyDown={handleDescriptionKeyDown}
-            disabled={!isConnected}
             style={{ minHeight: "80px", resize: "vertical" }}
           />
         </div>
@@ -211,12 +257,7 @@ export default function TerminalModal() {
           <div style={{ fontSize: "8px", marginBottom: "4px", opacity: 0.6 }}>
             Workspace directory
           </div>
-          <WorkspaceField
-            value={workspace}
-            onChange={setWorkspace}
-            disabled={!isConnected}
-            onKeyDown={handleKeyDown}
-          />
+          <WorkspaceField value={workspace} onChange={setWorkspace} onKeyDown={handleKeyDown} />
         </div>
 
         {/* File attachments */}
@@ -242,7 +283,6 @@ export default function TerminalModal() {
                 gap: "4px",
               }}
               onClick={() => fileInputRef.current?.click()}
-              disabled={!isConnected}
             >
               <Paperclip size={10} />
               Add files
@@ -300,14 +340,26 @@ export default function TerminalModal() {
           )}
         </div>
 
-        {/* Submit */}
-        <button
-          className="pixel-button pixel-button--primary w-full"
-          onClick={() => void handleSubmit()}
-          disabled={!canSubmit}
-        >
-          Assign Task
-        </button>
+        {/* Actions: save as draft, or assign now */}
+        <div style={{ display: "flex", gap: "8px" }}>
+          <button
+            className="pixel-button"
+            style={{ flex: 1 }}
+            onClick={handleSaveDraft}
+            disabled={!canSaveDraft}
+            title="Save without assigning to a worker"
+          >
+            Save Draft
+          </button>
+          <button
+            className="pixel-button pixel-button--primary"
+            style={{ flex: 1 }}
+            onClick={() => void handleSubmit()}
+            disabled={!canSubmit}
+          >
+            Assign Task
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -375,6 +375,30 @@ describe("reducer", () => {
     });
   });
 
+  describe("REMOVE_TASK", () => {
+    it("removes a task by taskId", () => {
+      const t1 = makeTask({ taskId: "t1" });
+      const t2 = makeTask({ taskId: "t2" });
+      state = makeState({ tasks: [t1, t2] });
+      const next = reducer(state, { type: "REMOVE_TASK", taskId: "t1" });
+      expect(next.tasks).toHaveLength(1);
+      expect(next.tasks[0].taskId).toBe("t2");
+    });
+
+    it("removes a task by runId", () => {
+      state = makeState({ tasks: [makeTask({ taskId: "t1", runId: "r1" })] });
+      const next = reducer(state, { type: "REMOVE_TASK", taskId: "r1" });
+      expect(next.tasks).toHaveLength(0);
+    });
+
+    it("leaves the list unchanged when nothing matches", () => {
+      const t1 = makeTask({ taskId: "t1" });
+      state = makeState({ tasks: [t1] });
+      const next = reducer(state, { type: "REMOVE_TASK", taskId: "nope" });
+      expect(next.tasks).toEqual([t1]);
+    });
+  });
+
   describe("APPEND_CHAT", () => {
     it("appends a chat message", () => {
       const msg = makeChat({ id: "c1", content: "Hi" });
