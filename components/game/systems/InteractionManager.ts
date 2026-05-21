@@ -45,6 +45,17 @@ export class InteractionManager {
       this.menuOpen = false;
       this.cameraController.resumeCameraFollow();
     };
+
+    this.scene.input.mouse?.disableContextMenu();
+  }
+
+  registerRightClick(worker: Worker) {
+    worker.sprite.setInteractive();
+    worker.sprite.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
+      if (pointer.rightButtonDown()) {
+        this.openWorkerMenu(worker, pointer.worldX, pointer.worldY);
+      }
+    });
   }
 
   findNearestWorker(): Worker | null {
@@ -67,7 +78,7 @@ export class InteractionManager {
     return nearest;
   }
 
-  openWorkerMenu(worker: Worker) {
+  openWorkerMenu(worker: Worker, anchorWorldX?: number, anchorWorldY?: number) {
     this.menuOpen = true;
 
     const isWorking = worker.status === "working";
@@ -129,7 +140,11 @@ export class InteractionManager {
       });
     }
 
-    this.interactionMenu.show(worker.sprite.x, worker.sprite.y, options);
+    this.interactionMenu.show(
+      anchorWorldX ?? worker.sprite.x,
+      anchorWorldY ?? worker.sprite.y,
+      options,
+    );
   }
 
   /** Run proximity detection and prompt display in the update loop. */

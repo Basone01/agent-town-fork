@@ -39,7 +39,11 @@ export class WorkerManager {
     return worker;
   }
 
-  syncWorkers(seats: SeatState[], clearNearest: (worker: Worker) => void) {
+  syncWorkers(
+    seats: SeatState[],
+    clearNearest: (worker: Worker) => void,
+    onSpawn?: (worker: Worker) => void,
+  ) {
     const nextBySeatId = new Map(
       seats.filter((seat) => seat.assigned && seat.spriteKey).map((seat) => [seat.seatId, seat]),
     );
@@ -71,7 +75,10 @@ export class WorkerManager {
           existingBySeatId.delete(seatDef.seatId);
         }
         const created = this.spawnWorker(seatDef, seat);
-        if (created) nextWorkers.push(created);
+        if (created) {
+          nextWorkers.push(created);
+          onSpawn?.(created);
+        }
         continue;
       }
 

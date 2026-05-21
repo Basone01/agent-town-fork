@@ -16,7 +16,11 @@ export function initSceneEventBridge(
 
   unsubs.push(
     gameEvents.on("seat-configs-updated", (seats) => {
-      workerManager.syncWorkers(seats, (w) => interactionManager.clearIfNearest(w));
+      workerManager.syncWorkers(
+        seats,
+        (w) => interactionManager.clearIfNearest(w),
+        (w) => interactionManager.registerRightClick(w),
+      );
     }),
   );
 

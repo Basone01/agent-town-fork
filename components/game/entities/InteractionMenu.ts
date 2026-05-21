@@ -33,6 +33,8 @@ export class InteractionMenu {
   private selectedIndex = 0;
   private _visible = false;
   private openFrame = 0;
+  /** Screen-space rect of the menu while visible — for outside-click dismiss. */
+  private screenBounds = new Phaser.Geom.Rectangle();
 
   private upKey: Phaser.Input.Keyboard.Key;
   private downKey: Phaser.Input.Keyboard.Key;
@@ -61,6 +63,9 @@ export class InteractionMenu {
     this.confirmKey = kb.addKey(Phaser.Input.Keyboard.KeyCodes.E, false);
     this.enterKey = kb.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER, false);
     this.escKey = kb.addKey(Phaser.Input.Keyboard.KeyCodes.ESC, false);
+
+    // Dismiss the menu when the user clicks anywhere outside its bounds.
+    this.scene.input.on("pointerdown", this.handleOutsideClick, this);
   }
 
   get visible(): boolean {
@@ -119,6 +124,11 @@ export class InteractionMenu {
         0,
       );
       hit.setInteractive({ useHandCursor: opt.enabled });
+      // The container is scrollFactor(0), but Phaser's input hit-test reads
+      // each child's OWN scrollFactor (default 1) — not the container's. That
+      // mismatch offsets the clickable area from the rendered menu by
+      // scrollX * zoom. Pin the hit zone so input matches the render.
+      hit.setScrollFactor(0);
       hit.on("pointerover", () => {
         if (opt.enabled) {
           this.selectedIndex = i;
@@ -138,12 +148,31 @@ export class InteractionMenu {
     this.updateHighlight();
 
     const cam = this.scene.cameras.main;
-    const screenX = (worldX - cam.scrollX) * cam.zoom;
-    const screenY = (worldY - cam.scrollY) * cam.zoom;
-    const menuX = Math.min(screenX - MENU_WIDTH / 2, cam.width - MENU_WIDTH - 10);
-    const menuY = Math.max(screenY - totalH - 10, 10);
+    const zoom = cam.zoom;
 
-    this.container.setPosition(Math.max(menuX, 10), menuY);
+    // World point → screen pixel. Phaser zooms the main camera around its
+    // centre, so (world - scroll) * zoom alone is missing the centre term.
+    const screenX = (worldX - cam.scrollX) * zoom + cam.centerX * (1 - zoom);
+    const screenY = (worldY - cam.scrollY) * zoom + cam.centerY * (1 - zoom);
+
+    // The container is rendered through the zoomed camera, so its on-screen
+    // footprint is the layout size times the zoom.
+    const screenW = MENU_WIDTH * zoom;
+    const screenH = totalH * zoom;
+
+    // Anchor above the cursor, horizontally centred; clamp to the viewport.
+    const sx = Phaser.Math.Clamp(screenX - screenW / 2, 10, cam.width - screenW - 10);
+    const sy = Phaser.Math.Clamp(screenY - screenH - 10, 10, cam.height - screenH - 10);
+
+    // Remember the on-screen rect so an outside click can dismiss the menu.
+    this.screenBounds.setTo(sx, sy, screenW, screenH);
+
+    // Screen pixel → container position (inverse of the camera transform —
+    // the camera re-applies zoom + centring when it renders this container).
+    this.container.setPosition(
+      (sx - cam.centerX * (1 - zoom)) / zoom,
+      (sy - cam.centerY * (1 - zoom)) / zoom,
+    );
     this.container.setVisible(true);
     this._visible = true;
   }
@@ -152,6 +181,16 @@ export class InteractionMenu {
     this.container.setVisible(false);
     this._visible = false;
     this.clearItems();
+  }
+
+  /** Pointer-down handler: dismiss the menu on a click outside its bounds. */
+  private handleOutsideClick(pointer: Phaser.Input.Pointer) {
+    if (!this._visible) return;
+    // Ignore the same click that opened the menu (mirrors update()'s guard).
+    if (this.scene.game.getFrame() - this.openFrame < 2) return;
+    if (this.screenBounds.contains(pointer.x, pointer.y)) return;
+    this.hide();
+    this.onClose?.();
   }
 
   update() {
@@ -229,6 +268,8 @@ export class InteractionMenu {
   destroy() {
     this.clearItems();
     this.container.destroy();
+
+    this.scene.input.off("pointerdown", this.handleOutsideClick, this);
 
     const kb = this.scene.input.keyboard;
     if (kb) {
