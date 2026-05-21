@@ -67,6 +67,8 @@ export function useTaskRouter(refs: TaskRouterRefs) {
           model: seat?.model,
           // Per-task working directory; unset falls back to the server default.
           workspace: task?.workspace,
+          // Plan-mode tasks run the worker with `--permission-mode plan`.
+          permissionMode: task?.planMode ? "plan" : undefined,
         })
         .then((res: GatewayFrame) => {
           const runId = (res.payload?.runId as string) ?? undefined;
@@ -122,6 +124,7 @@ export function useTaskRouter(refs: TaskRouterRefs) {
       targetSessionKey?: string,
       workspace?: string,
       title?: string,
+      planMode?: boolean,
     ) => {
       const client = refs.clientRef.current;
       if (!client || client.status !== "connected") return;
@@ -142,6 +145,7 @@ export function useTaskRouter(refs: TaskRouterRefs) {
           sessionKey,
           seatId,
           workspace: workspace?.trim() || undefined,
+          planMode: planMode || undefined,
           actorName,
           createdAt: new Date().toISOString(),
         },
@@ -172,6 +176,7 @@ export function useTaskRouter(refs: TaskRouterRefs) {
       targetSessionKey?: string,
       workspace?: string,
       title?: string,
+      planMode?: boolean,
     ) => {
       const taskId = refs.nextTaskId();
       const sessionKey = targetSessionKey ?? refs.activeSessionKey.current ?? MAIN_SESSION_KEY;
@@ -186,6 +191,7 @@ export function useTaskRouter(refs: TaskRouterRefs) {
           sessionKey,
           seatId,
           workspace: workspace?.trim() || undefined,
+          planMode: planMode || undefined,
           actorName,
           createdAt: new Date().toISOString(),
         },
@@ -196,11 +202,15 @@ export function useTaskRouter(refs: TaskRouterRefs) {
 
   // Edit a draft's fields in place, keeping its "draft" status.
   const updateDraft = useCallback(
-    (taskId: string, patch: { message?: string; title?: string; workspace?: string }) => {
+    (
+      taskId: string,
+      patch: { message?: string; title?: string; workspace?: string; planMode?: boolean },
+    ) => {
       const next: Partial<TaskItem> = {};
       if (patch.message !== undefined) next.message = patch.message;
       if (patch.title !== undefined) next.title = patch.title.trim() || undefined;
       if (patch.workspace !== undefined) next.workspace = patch.workspace.trim() || undefined;
+      if (patch.planMode !== undefined) next.planMode = patch.planMode || undefined;
       refs.dispatch.current({ type: "UPDATE_TASK", taskId, patch: next });
     },
     [refs],
@@ -213,7 +223,13 @@ export function useTaskRouter(refs: TaskRouterRefs) {
   const assignDraft = useCallback(
     (
       taskId: string,
-      overrides?: { message?: string; title?: string; workspace?: string; seatId?: string },
+      overrides?: {
+        message?: string;
+        title?: string;
+        workspace?: string;
+        seatId?: string;
+        planMode?: boolean;
+      },
     ) => {
       const client = refs.clientRef.current;
       if (!client || client.status !== "connected") return;
@@ -228,6 +244,7 @@ export function useTaskRouter(refs: TaskRouterRefs) {
       if (overrides?.workspace !== undefined)
         patch.workspace = overrides.workspace.trim() || undefined;
       if (overrides?.seatId !== undefined) patch.seatId = overrides.seatId;
+      if (overrides?.planMode !== undefined) patch.planMode = overrides.planMode || undefined;
 
       refs.dispatch.current({ type: "UPDATE_TASK", taskId, patch });
       refs.dispatch.current({

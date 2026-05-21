@@ -98,6 +98,7 @@ function TaskRow({
       <div className="task-view-row__sub">
         {task.actorName ?? "Unassigned"}
         {showSession ? ` · ${sessionLabel(task.sessionKey)}` : ""}
+        {task.planMode ? " · plan" : ""}
       </div>
     </button>
   );
@@ -459,6 +460,7 @@ export default function TaskViewModal({
                   <span className={`hud-status hud-status--${selected.status}`}>
                     {statusLabel(selected.status)}
                   </span>
+                  {selected.planMode && <span className="task-view-plan-tag">plan mode</span>}
                   <span>{selected.actorName ?? "Unassigned"}</span>
                   <span>{sessionLabel(selected.sessionKey)}</span>
                   <span>created {formatRelativeTime(selected.createdAt)}</span>

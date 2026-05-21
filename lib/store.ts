@@ -53,6 +53,7 @@ interface StudioContextValue {
     sessionKey?: string,
     workspace?: string,
     title?: string,
+    planMode?: boolean,
   ) => void;
   saveDraft: (
     message: string,
@@ -60,14 +61,21 @@ interface StudioContextValue {
     sessionKey?: string,
     workspace?: string,
     title?: string,
+    planMode?: boolean,
   ) => void;
   updateDraft: (
     taskId: string,
-    patch: { message?: string; title?: string; workspace?: string },
+    patch: { message?: string; title?: string; workspace?: string; planMode?: boolean },
   ) => void;
   assignDraft: (
     taskId: string,
-    overrides?: { message?: string; title?: string; workspace?: string; seatId?: string },
+    overrides?: {
+      message?: string;
+      title?: string;
+      workspace?: string;
+      seatId?: string;
+      planMode?: boolean;
+    },
   ) => void;
   deleteTask: (taskId: string) => void;
   retryTask: (taskId: string) => void;

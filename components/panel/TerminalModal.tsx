@@ -19,6 +19,16 @@ function composeMessage(description: string, files: AttachedFile[]): string {
   return parts.join("\n");
 }
 
+// A description starting with `/plan` dispatches the task in plan mode — the
+// worker runs with `--permission-mode plan` and returns a plan instead of
+// editing. The prefix is stripped so it never reaches the model as literal text.
+const PLAN_PREFIX_RE = /^\s*\/plan\b[^\S\n]*\n?/i;
+function parsePlan(description: string): { planMode: boolean; body: string } {
+  const match = description.match(PLAN_PREFIX_RE);
+  if (!match) return { planMode: false, body: description };
+  return { planMode: true, body: description.slice(match[0].length) };
+}
+
 export default function TerminalModal() {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
@@ -36,7 +46,9 @@ export default function TerminalModal() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isConnected = state.connection === "connected";
-  const hasDescription = description.trim().length > 0;
+  // A leading `/plan` flips plan mode; `body` is the description without it.
+  const { planMode, body } = parsePlan(description);
+  const hasDescription = body.trim().length > 0;
   // Drafting works offline; assigning needs a live gateway connection.
   const canSaveDraft = hasDescription && !submitting;
   const canSubmit = isConnected && hasDescription && !submitting;
@@ -80,7 +92,8 @@ export default function TerminalModal() {
       const task = state.tasks.find((t) => t.taskId === taskId);
       if (!task) return;
       setTitle(task.title ?? "");
-      setDescription(task.message);
+      // Re-surface the /plan prefix so the trigger stays visible and editable.
+      setDescription((task.planMode ? "/plan\n" : "") + task.message);
       setWorkspace(task.workspace ?? "");
       setFiles([]);
       setSubmitting(false);
@@ -125,11 +138,11 @@ export default function TerminalModal() {
   const handleSaveDraft = () => {
     if (!canSaveDraft) return;
     setSubmitting(true);
-    const message = composeMessage(description, files);
+    const message = composeMessage(body, files);
     if (editingDraftId) {
-      updateDraft(editingDraftId, { message, title, workspace });
+      updateDraft(editingDraftId, { message, title, workspace, planMode });
     } else {
-      saveDraft(message, targetSeatId, undefined, workspace, title);
+      saveDraft(message, targetSeatId, undefined, workspace, title, planMode);
     }
     reset();
     close();
@@ -138,13 +151,13 @@ export default function TerminalModal() {
   const handleSubmit = async () => {
     if (!canSubmit) return;
     setSubmitting(true);
-    const message = composeMessage(description, files);
+    const message = composeMessage(body, files);
     if (editingDraftId) {
       // Editing a draft: carry fresh field values as overrides so the promote
       // doesn't race the in-place update against a stale tasks snapshot.
-      assignDraft(editingDraftId, { message, title, workspace, seatId: targetSeatId });
+      assignDraft(editingDraftId, { message, title, workspace, seatId: targetSeatId, planMode });
     } else {
-      assignTask(message, targetSeatId, undefined, workspace, title);
+      assignTask(message, targetSeatId, undefined, workspace, title, planMode);
     }
     reset();
     close();
@@ -240,16 +253,23 @@ export default function TerminalModal() {
         <div>
           <div style={{ fontSize: "8px", marginBottom: "4px", opacity: 0.6 }}>
             Description — supports markdown{" "}
-            <span style={{ opacity: 0.5 }}>(Enter to submit · Shift+Enter for newline)</span>
+            <span style={{ opacity: 0.5 }}>
+              (Enter to submit · Shift+Enter for newline · start with /plan for plan mode)
+            </span>
           </div>
           <textarea
             className="pixel-input"
-            placeholder="Describe the task…"
+            placeholder="Describe the task…  (tip: begin with /plan to plan instead of execute)"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             onKeyDown={handleDescriptionKeyDown}
             style={{ minHeight: "80px", resize: "vertical" }}
           />
+          {planMode && (
+            <div style={{ fontSize: "8px", color: "#a78bfa", marginTop: "5px" }}>
+              ▸ Plan mode — the worker researches and returns a plan, it won&apos;t edit files.
+            </div>
+          )}
         </div>
 
         {/* Workspace */}

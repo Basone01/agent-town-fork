@@ -1,7 +1,7 @@
 /* Task View modal — layout + markdown rendering. */
 
 .task-view-overlay {
-  position: absolute;
+  position: fixed;
   inset: 0;
   z-index: 60;
   display: flex;
@@ -210,6 +210,13 @@
   color: var(--pixel-muted);
   padding: 12px 14px 10px;
   flex-shrink: 0;
+}
+.task-view-plan-tag {
+  color: #a78bfa;
+  border: 1px solid #a78bfa;
+  border-radius: var(--pixel-radius-sm);
+  padding: 1px 6px;
+  text-transform: uppercase;
 }
 .task-view-delete {
   margin-left: auto;

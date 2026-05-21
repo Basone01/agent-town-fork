@@ -75,6 +75,8 @@ export interface TaskItem {
   sessionKey: string;
   /** Working directory the agent runs this task in. Unset = server's default workspace. */
   workspace?: string;
+  /** When true, the worker runs in plan mode (`--permission-mode plan`) — researches, doesn't edit. */
+  planMode?: boolean;
   actorName?: string;
   result?: string;
   createdAt: string;
