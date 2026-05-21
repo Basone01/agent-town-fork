@@ -28,6 +28,7 @@ export interface SeatDetailPanelProps {
   effectiveSpritePath: string;
   effectiveSeatType: SeatType;
   effectiveAgentConfig: AgentConfig | undefined;
+  effectiveModel: string;
   busy: boolean;
   canSave: boolean;
   agentsLoading: boolean;
@@ -35,12 +36,12 @@ export interface SeatDetailPanelProps {
   usedAgentIds: Set<string>;
   onNameChange: (value: string) => void;
   onRoleTitleChange: (value: string) => void;
+  onModelChange: (value: string) => void;
   onSpriteSelect: (spriteKey: string, spritePath: string, spriteLabel: string) => void;
   onSelectAgent: (agent: AgentConfig) => void;
   onSave: () => void;
   onUnassign: () => void;
   onClose: () => void;
-  isAuggie?: boolean;
 }
 
 export default function SeatDetailPanel({
@@ -51,6 +52,7 @@ export default function SeatDetailPanel({
   effectiveSpritePath,
   effectiveSeatType,
   effectiveAgentConfig,
+  effectiveModel,
   busy,
   canSave,
   agentsLoading,
@@ -58,12 +60,12 @@ export default function SeatDetailPanel({
   usedAgentIds,
   onNameChange,
   onRoleTitleChange,
+  onModelChange,
   onSpriteSelect,
   onSelectAgent,
   onSave,
   onUnassign,
   onClose,
-  isAuggie,
 }: SeatDetailPanelProps) {
   return (
     <div
@@ -168,7 +170,7 @@ export default function SeatDetailPanel({
                       color: "var(--pixel-muted)",
                     }}
                   >
-                    {isAuggie ? "Auggie" : "No agents found"}
+                    No agents found
                   </div>
                 ) : (
                   <select
@@ -221,6 +223,22 @@ export default function SeatDetailPanel({
               ))}
             </div>
           </div>
+
+          <div>
+            <label className="hud-panel__label">Model</label>
+            <select
+              className="pixel-input hud-panel__input"
+              style={{ minHeight: 0 }}
+              value={effectiveModel}
+              disabled={busy}
+              onChange={(event) => onModelChange(event.target.value)}
+            >
+              <option value="">Default</option>
+              <option value="opus">Opus 4.7</option>
+              <option value="sonnet">Sonnet 4.6</option>
+              <option value="haiku">Haiku 4.5</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -228,10 +246,8 @@ export default function SeatDetailPanel({
         {busy
           ? "This seat is currently active. Finish or stop the task before changing crew assignment."
           : effectiveSeatType === "agent"
-            ? isAuggie
-              ? "Agent seats are not supported with the Auggie provider. Switch to Worker mode to assign tasks."
-              : "Select an OpenClaw agent, choose a portrait, then save. Agents have their own workspace and session."
-            : "Select a portrait, set name and role, then save. Workers execute tasks from the main agent."}
+            ? "Agent seats bind to a discovered independent agent. Use Worker mode to assign tasks from the main agent."
+            : "Select a portrait, set name, role and model, then save. Workers execute tasks from the main agent."}
       </div>
 
       <SpritePreview

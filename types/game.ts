@@ -37,6 +37,8 @@ export interface SeatState {
   /** "worker" = tool-slot for main agent; "agent" = independent OpenClaw agent. */
   seatType: SeatType;
   roleTitle?: string;
+  /** Claude model alias this seat's worker runs with (opus | sonnet | haiku). */
+  model?: string;
   assigned?: boolean;
   spriteKey?: string;
   spritePath?: string;
@@ -99,12 +101,9 @@ export interface ToolChatMessage extends ChatMessageBase {
 
 export type ChatMessage = TextChatMessage | ToolChatMessage;
 
-export type AgentProvider = "openclaw" | "auggie";
-
 export interface GatewayConfig {
   url: string;
   token: string;
-  provider?: AgentProvider;
 }
 
 export interface SessionMetrics {

@@ -116,6 +116,7 @@ export function mergeDiscoveredSeats(
       label,
       seatType,
       roleTitle,
+      model: stored?.model,
       assigned,
       spriteKey: assigned ? spriteKey : undefined,
       spritePath: assigned ? spritePath : undefined,

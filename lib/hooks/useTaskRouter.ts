@@ -60,10 +60,11 @@ export function useTaskRouter(refs: TaskRouterRefs) {
           sessionKey,
           message,
           idempotencyKey: taskId,
-          // Passed through to the Auggie bridge for personality injection;
-          // OpenClaw ignores unknown params.
+          // Passed through to the Claude bridge: personality injection via
+          // --append-system-prompt, and per-seat model selection via --model.
           seatLabel: seat?.label,
           seatRole: seat?.roleTitle,
+          model: seat?.model,
         })
         .then((res: GatewayFrame) => {
           const runId = (res.payload?.runId as string) ?? undefined;

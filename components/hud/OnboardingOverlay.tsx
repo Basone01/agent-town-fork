@@ -127,8 +127,8 @@ export default function OnboardingOverlay({ onDone }: Props) {
             textShadow: "0.5px 0 0 currentColor",
           }}
         >
-          Click here to configure your{" "}
-          <strong style={{ color: "var(--pixel-accent)" }}>Gateway</strong> connection
+          Your workers run on local <strong style={{ color: "var(--pixel-accent)" }}>Claude</strong>{" "}
+          — connecting now
         </p>
         {/* Arrow pointing down */}
         <div

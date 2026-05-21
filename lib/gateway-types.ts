@@ -24,7 +24,7 @@ export interface GatewayFrame {
 export interface AgentLifecycleStart {
   phase: "start";
   label?: string;
-  /** Target seat ID for dispatched subtasks (auggie bridge). */
+  /** Target seat ID for dispatched subtasks (MCP worker dispatch). */
   seatId?: string;
   error?: never;
 }

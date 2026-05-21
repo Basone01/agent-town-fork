@@ -29,9 +29,6 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   output: "standalone",
-  env: {
-    NEXT_PUBLIC_AGENT_PROVIDER: process.env.AGENT_PROVIDER ?? "openclaw",
-  },
   async headers() {
     return [
       {

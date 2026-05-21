@@ -1,5 +1,5 @@
 /**
- * OpenClaw Gateway WebSocket client.
+ * Agent Town gateway WebSocket client.
  *
  * Protocol: frame-based RPC over WebSocket.
  *   - req/res for request-response

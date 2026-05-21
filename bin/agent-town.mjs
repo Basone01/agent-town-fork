@@ -14,21 +14,24 @@ if (args.includes("--help") || args.includes("-h")) {
   console.log(`
   \x1b[36m\x1b[1mAgent Town\x1b[0m  Pixel-style AI Agent collaboration community
 
+  Runs your AI workers with the local \x1b[1mclaude\x1b[0m CLI (Claude Code).
+  Make sure \x1b[1mclaude\x1b[0m is installed and authenticated first.
+
   Usage
     $ agent-town [options]
 
   Options
-    --port     <number>  Port to listen on             (default: 3000)
-    --gateway  <url>     Gateway WebSocket URL          (default: ws://127.0.0.1:18789/)
-    --provider <name>    Agent provider: openclaw|auggie (default: openclaw)
-    -v, --version        Show version
-    -h, --help           Show this help message
+    --port      <number>  Port to listen on                  (default: 3000)
+    --workspace <dir>     Directory workers operate in        (default: cwd)
+    --model     <name>    Default model: opus|sonnet|haiku    (default: sonnet)
+    -v, --version         Show version
+    -h, --help            Show this help message
 
   Examples
     $ agent-town
     $ agent-town --port 8080
-    $ agent-town --gateway ws://192.168.1.100:18789/
-    $ agent-town --provider auggie
+    $ agent-town --workspace ~/projects/my-app
+    $ agent-town --model opus
 `);
   process.exit(0);
 }
@@ -46,15 +49,16 @@ function getArg(flag) {
 }
 
 const port = getArg("--port");
-const gateway = getArg("--gateway");
-const provider = getArg("--provider");
+const workspace = getArg("--workspace");
+const model = getArg("--model");
 
 if (port) process.env.PORT = port;
-if (gateway) process.env.GATEWAY_URL = gateway;
-if (provider) {
-  process.env.AGENT_PROVIDER = provider;
-  process.env.NEXT_PUBLIC_AGENT_PROVIDER = provider;
-}
+if (model) process.env.CLAUDE_MODEL = model;
+// Workers operate on the directory agent-town was launched from unless told otherwise.
+process.env.CLAUDE_WORKSPACE_DIR =
+  (workspace && resolve(process.cwd(), workspace)) ??
+  process.env.CLAUDE_WORKSPACE_DIR ??
+  process.cwd();
 process.env.NODE_ENV = "production";
 
 const serverPath = resolve(root, ".next", "standalone", "server.prod.mjs");

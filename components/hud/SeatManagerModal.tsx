@@ -10,9 +10,6 @@ import { createLogger } from "@/lib/logger";
 const log = createLogger("SeatManager");
 import { WORKER_SPRITES } from "@/components/game/config/animations";
 import type { SeatState, SeatType, AgentConfig } from "@/types/game";
-import { getAgentProvider } from "@/lib/utils";
-
-const IS_AUGGIE = getAgentProvider() === "auggie";
 import SeatList from "./seat-manager/SeatList";
 import SeatDetailPanel from "./seat-manager/SeatDetailPanel";
 
@@ -34,6 +31,7 @@ export default function SeatManagerModal({
   const [spritePath, setSpritePath] = useState("");
   const [draftSeatType, setDraftSeatType] = useState<SeatType>("worker");
   const [draftAgentConfig, setDraftAgentConfig] = useState<AgentConfig | undefined>(undefined);
+  const [draftModel, setDraftModel] = useState<string>("");
 
   // Discovered OpenClaw agents
   const [discoveredAgents, setDiscoveredAgents] = useState<AgentConfig[]>([]);
@@ -91,6 +89,7 @@ export default function SeatManagerModal({
     : (selectedSeat.spritePath ?? WORKER_SPRITES[0]?.path ?? "");
   const effectiveSeatType = usingDraft ? draftSeatType : (selectedSeat.seatType ?? "worker");
   const effectiveAgentConfig = usingDraft ? draftAgentConfig : selectedSeat.agentConfig;
+  const effectiveModel = usingDraft ? draftModel : (selectedSeat.model ?? "");
 
   const assignedCount = seats.filter((seat) => seat.assigned).length;
   const busy = selectedSeat.status === "running" || selectedSeat.status === "returning";
@@ -115,6 +114,7 @@ export default function SeatManagerModal({
     setSpritePath(seat.spritePath ?? WORKER_SPRITES[0]?.path ?? "");
     setDraftSeatType(seat.seatType ?? "worker");
     setDraftAgentConfig(seat.agentConfig);
+    setDraftModel(seat.model ?? "");
   };
 
   const handleSelectSeat = (seat: SeatState) => {
@@ -129,6 +129,7 @@ export default function SeatManagerModal({
       seatType: effectiveSeatType,
       label: effectiveName.trim(),
       roleTitle: effectiveRoleTitle.trim(),
+      model: effectiveModel || undefined,
       spriteKey: effectiveSpriteKey,
       spritePath: effectiveSpritePath,
       agentConfig: effectiveSeatType === "agent" ? effectiveAgentConfig : undefined,
@@ -172,6 +173,11 @@ export default function SeatManagerModal({
   const handleRoleTitleChange = (value: string) => {
     if (!usingDraft) beginDraftForSeat(selectedSeat);
     setRoleTitle(value);
+  };
+
+  const handleModelChange = (value: string) => {
+    if (!usingDraft) beginDraftForSeat(selectedSeat);
+    setDraftModel(value);
   };
 
   const handleSpriteSelect = (key: string, path: string, label: string) => {
@@ -259,6 +265,7 @@ export default function SeatManagerModal({
           effectiveSpritePath={effectiveSpritePath}
           effectiveSeatType={effectiveSeatType}
           effectiveAgentConfig={effectiveAgentConfig}
+          effectiveModel={effectiveModel}
           busy={busy}
           canSave={canSave}
           agentsLoading={agentsLoading}
@@ -266,12 +273,12 @@ export default function SeatManagerModal({
           usedAgentIds={usedAgentIds}
           onNameChange={handleNameChange}
           onRoleTitleChange={handleRoleTitleChange}
+          onModelChange={handleModelChange}
           onSpriteSelect={handleSpriteSelect}
           onSelectAgent={handleSelectAgent}
           onSave={handleSave}
           onUnassign={handleUnassign}
           onClose={onClose}
-          isAuggie={IS_AUGGIE}
         />
       </div>
     </div>

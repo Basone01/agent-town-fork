@@ -34,6 +34,7 @@ export interface PersistedSeatConfig {
   label?: string;
   seatType?: SeatType;
   roleTitle?: string;
+  model?: string;
   assigned?: boolean;
   spriteKey?: string;
   spritePath?: string;
