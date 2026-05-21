@@ -114,12 +114,14 @@ export function useTaskRouter(refs: TaskRouterRefs) {
   );
 
   const assignTask = useCallback(
-    (message: string, seatId?: string) => {
+    (message: string, seatId?: string, targetSessionKey?: string) => {
       const client = refs.clientRef.current;
       if (!client || client.status !== "connected") return;
 
       const taskId = refs.nextTaskId();
-      const sessionKey = refs.activeSessionKey.current ?? MAIN_SESSION_KEY;
+      // An explicit sessionKey (e.g. continuing a task from the Task View)
+      // targets that session; otherwise the new task joins the active one.
+      const sessionKey = targetSessionKey ?? refs.activeSessionKey.current ?? MAIN_SESSION_KEY;
       const actorName = seatId ? resolveSeatLabelForTask(refs.seats.current, seatId) : undefined;
 
       refs.dispatch.current({

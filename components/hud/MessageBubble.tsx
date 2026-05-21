@@ -3,17 +3,21 @@
 import { Square } from "lucide-react";
 import type { ChatMessage } from "@/types/game";
 import ToolBubble from "./ToolBubble";
+import Markdown from "./Markdown";
 
 export default function MessageBubble({
   msg,
   actorName,
   canStop,
   onStop,
+  renderMarkdown,
 }: {
   msg: ChatMessage;
   actorName?: string;
   canStop?: boolean;
   onStop?: () => void;
+  /** When set, finished assistant messages render as markdown. */
+  renderMarkdown?: boolean;
 }) {
   if (msg.role === "system") {
     return <div className="hud-chat__system">{msg.content}</div>;
@@ -26,6 +30,11 @@ export default function MessageBubble({
   const handleStop = () => {
     if (onStop) onStop();
   };
+
+  // Markdown only for finished assistant messages — partial markdown mid-stream
+  // (an unclosed code fence, half a table) renders messily, so stream as plain
+  // text + cursor and flip to markdown once streaming completes.
+  const showMarkdown = !!renderMarkdown && msg.role === "assistant" && !msg.streaming;
 
   return (
     <div
@@ -50,8 +59,14 @@ export default function MessageBubble({
         )}
       </div>
       <div className="hud-chat__content">
-        {msg.content}
-        {msg.streaming ? <span className="pixel-cursor">▌</span> : null}
+        {showMarkdown ? (
+          <Markdown>{msg.content}</Markdown>
+        ) : (
+          <>
+            {msg.content}
+            {msg.streaming ? <span className="pixel-cursor">▌</span> : null}
+          </>
+        )}
       </div>
     </div>
   );

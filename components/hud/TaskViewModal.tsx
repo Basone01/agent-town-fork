@@ -2,14 +2,17 @@
 
 import "./task-view.css";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { SendHorizontal } from "lucide-react";
 import type { TaskItem, TaskStatus } from "@/types/game";
 import { useStudio } from "@/lib/store";
 import { gameEvents } from "@/lib/events";
-import { formatRelativeTime } from "@/lib/constants";
+import { formatRelativeTime, isVisibleChatMessage } from "@/lib/constants";
 import Markdown from "./Markdown";
+import MessageBubble from "./MessageBubble";
 
 type StatusFilter = "all" | "running" | "done" | "failed" | "stopped";
+type DetailTab = "result" | "conversation";
 
 /** Maps every task status onto one of the filter buckets. */
 const STATUS_BUCKET: Record<TaskStatus, Exclude<StatusFilter, "all">> = {
@@ -38,13 +41,18 @@ function statusLabel(status: TaskStatus): string {
 }
 
 export default function TaskViewModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { state } = useStudio();
+  const { state, assignTask } = useStudio();
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<StatusFilter>("all");
+  const [tab, setTab] = useState<DetailTab>("result");
+  const [draft, setDraft] = useState("");
   // Tracks which task's result was just copied — keyed by id so switching
   // tasks naturally clears the "Copied!" flash without an effect.
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const threadRef = useRef<HTMLDivElement>(null);
+
+  const isConnected = state.connection === "connected";
 
   // All tasks, newest first.
   const allTasks = useMemo(
@@ -77,7 +85,26 @@ export default function TaskViewModal({ open, onClose }: { open: boolean; onClos
     [state.sessions],
   );
 
-  // Escape closes (capture phase so it fires even from the search input).
+  // The full conversation thread for the selected task's session.
+  const conversation = useMemo(() => {
+    if (!selected) return [];
+    return state.chatMessages.filter(
+      (m) => m.sessionKey === selected.sessionKey && isVisibleChatMessage(m),
+    );
+  }, [selected, state.chatMessages]);
+
+  // Actor fallback for assistant bubbles, mirrored from ChatPanel.
+  const actorByRunId = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const task of state.tasks) {
+      if (!task.actorName) continue;
+      if (task.runId) map.set(task.runId, task.actorName);
+      map.set(task.taskId, task.actorName);
+    }
+    return map;
+  }, [state.tasks]);
+
+  // Escape closes (capture phase so it fires even from the inputs).
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => {
@@ -89,6 +116,13 @@ export default function TaskViewModal({ open, onClose }: { open: boolean; onClos
     document.addEventListener("keydown", handler, true);
     return () => document.removeEventListener("keydown", handler, true);
   }, [open, onClose]);
+
+  // Keep the conversation pinned to the latest message while it streams.
+  useEffect(() => {
+    if (tab === "conversation" && threadRef.current) {
+      threadRef.current.scrollTop = threadRef.current.scrollHeight;
+    }
+  }, [tab, conversation.length]);
 
   if (!open) return null;
 
@@ -109,6 +143,23 @@ export default function TaskViewModal({ open, onClose }: { open: boolean; onClos
   const handleStop = () => {
     if (!selected) return;
     gameEvents.emit("stop-task", selected.runId ?? selected.taskId, selected.seatId ?? "");
+  };
+
+  const handleContinue = () => {
+    const text = draft.trim();
+    if (!text || !selected || !isConnected) return;
+    // Targets the task's own session — the bridge resumes it via --resume.
+    assignTask(text, selected.seatId, selected.sessionKey);
+    setDraft("");
+    setTab("conversation");
+  };
+
+  const handleContinueKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    e.stopPropagation();
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleContinue();
+    }
   };
 
   const isRunning = selected ? STATUS_BUCKET[selected.status] === "running" : false;
@@ -205,34 +256,96 @@ export default function TaskViewModal({ open, onClose }: { open: boolean; onClos
                   )}
                 </div>
 
-                <div className="task-view-section-label">Prompt</div>
-                <div className="task-view-prompt">{selected.message}</div>
-
-                <div className="task-view-section-label">Result</div>
-                {selected.result ? (
-                  <Markdown>{selected.result}</Markdown>
-                ) : (
-                  <div className="task-view-placeholder">
-                    {isRunning
-                      ? "Task is still running — no result yet."
-                      : `No result (${statusLabel(selected.status)}).`}
-                  </div>
-                )}
-
-                <div className="task-view-actions">
+                <div className="task-view-tabs">
                   <button
                     type="button"
-                    className="pixel-button"
-                    disabled={!selected.result}
-                    onClick={handleCopy}
+                    className={`task-view-tab ${tab === "result" ? "is-active" : ""}`}
+                    onClick={() => setTab("result")}
                   >
-                    {copiedId === selected.taskId ? "Copied!" : "Copy result"}
+                    Result
                   </button>
+                  <button
+                    type="button"
+                    className={`task-view-tab ${tab === "conversation" ? "is-active" : ""}`}
+                    onClick={() => setTab("conversation")}
+                  >
+                    Conversation
+                  </button>
+                </div>
+
+                <div className="task-view-tabcontent" ref={threadRef}>
+                  {tab === "result" ? (
+                    <>
+                      <div className="task-view-section-label">Prompt</div>
+                      <div className="task-view-prompt">{selected.message}</div>
+
+                      <div className="task-view-section-label">Result</div>
+                      {selected.result ? (
+                        <Markdown>{selected.result}</Markdown>
+                      ) : (
+                        <div className="task-view-placeholder">
+                          {isRunning
+                            ? "Task is still running — no result yet."
+                            : `No result (${statusLabel(selected.status)}).`}
+                        </div>
+                      )}
+
+                      <div className="task-view-actions">
+                        <button
+                          type="button"
+                          className="pixel-button"
+                          disabled={!selected.result}
+                          onClick={handleCopy}
+                        >
+                          {copiedId === selected.taskId ? "Copied!" : "Copy result"}
+                        </button>
+                      </div>
+                    </>
+                  ) : conversation.length === 0 ? (
+                    <div className="task-view-placeholder">
+                      {isRunning
+                        ? "Waiting for messages..."
+                        : "No conversation recorded for this session."}
+                    </div>
+                  ) : (
+                    <div className="task-view-thread">
+                      {conversation.map((m) => (
+                        <MessageBubble
+                          key={m.id}
+                          msg={m}
+                          actorName={actorByRunId.get(m.runId)}
+                          renderMarkdown
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Persistent continue-conversation row */}
+                <div className="task-view-continue">
+                  <textarea
+                    className="pixel-input task-view-continue__input"
+                    placeholder={isConnected ? "Continue the conversation..." : "Connect first..."}
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    onKeyDown={handleContinueKeyDown}
+                    disabled={!isConnected}
+                  />
                   {isRunning && (
                     <button type="button" className="pixel-button" onClick={handleStop}>
-                      Stop task
+                      Stop
                     </button>
                   )}
+                  <button
+                    type="button"
+                    className="pixel-icon-btn pixel-icon-btn--primary"
+                    style={{ width: 38, height: 38, minWidth: 38, minHeight: 38 }}
+                    onClick={handleContinue}
+                    disabled={!isConnected || !draft.trim()}
+                    title="Send follow-up"
+                  >
+                    <SendHorizontal size={16} />
+                  </button>
                 </div>
               </>
             )}
