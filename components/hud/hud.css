@@ -356,10 +356,11 @@
 .hud-chat__role,
 .hud-chat__tool-name {
   color: var(--pixel-accent);
-  font-family: var(--pixel-font);
-  font-size: 9px;
-  font-weight: 600;
+  font-family: var(--pixel-font-chat);
+  font-size: 11px;
+  font-weight: 700;
   line-height: 1.4;
+  letter-spacing: 0.02em;
 }
 
 .hud-chat__tool {
@@ -388,8 +389,8 @@
   height: 20px;
   padding: 0;
   flex-shrink: 0;
-  font-size: 10px;
-  font-family: var(--pixel-font);
+  font-size: 11px;
+  font-family: var(--pixel-font-chat);
   color: var(--pixel-red);
   background: rgba(239, 68, 68, 0.15);
   border: 1px solid var(--pixel-red);
