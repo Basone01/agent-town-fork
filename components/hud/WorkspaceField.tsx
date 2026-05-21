@@ -4,8 +4,8 @@ import "./workspace-field.css";
 
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Folder, Star, Plus, X } from "lucide-react";
-import { useDirectoryPicker } from "@/lib/hooks/useDirectoryPicker";
 import { loadFavoriteWorkspaces, saveFavoriteWorkspaces } from "@/lib/persistence";
+import DirectoryBrowserModal from "./DirectoryBrowserModal";
 
 interface WorkspaceFieldProps {
   value: string;
@@ -15,14 +15,14 @@ interface WorkspaceFieldProps {
   onKeyDown?: (e: KeyboardEvent<HTMLInputElement>) => void;
 }
 
-/** Workspace directory input with a native folder picker and a favorites list. */
+/** Workspace directory input with an in-app folder browser and a favorites list. */
 export default function WorkspaceField({
   value,
   onChange,
   disabled,
   onKeyDown,
 }: WorkspaceFieldProps) {
-  const { pick, picking } = useDirectoryPicker();
+  const [browserOpen, setBrowserOpen] = useState(false);
   const [favorites, setFavorites] = useState<string[]>(() => loadFavoriteWorkspaces());
   const [favOpen, setFavOpen] = useState(false);
   const favRef = useRef<HTMLDivElement>(null);
@@ -39,11 +39,6 @@ export default function WorkspaceField({
 
   const trimmed = value.trim();
   const alreadySaved = trimmed.length > 0 && favorites.includes(trimmed);
-
-  const handleBrowse = async () => {
-    const dir = await pick();
-    if (dir) onChange(dir);
-  };
 
   const commitFavorites = (next: string[]) => {
     setFavorites(next);
@@ -77,11 +72,11 @@ export default function WorkspaceField({
       <button
         type="button"
         className="pixel-button workspace-field__btn"
-        onClick={handleBrowse}
-        disabled={disabled || picking}
-        title="Pick a folder"
+        onClick={() => setBrowserOpen(true)}
+        disabled={disabled}
+        title="Browse for a folder"
       >
-        {picking ? "…" : "Browse…"}
+        Browse…
       </button>
       <div className="workspace-field__fav" ref={favRef}>
         <button
@@ -138,6 +133,15 @@ export default function WorkspaceField({
           </div>
         )}
       </div>
+      <DirectoryBrowserModal
+        open={browserOpen}
+        initialPath={value}
+        onSelect={(dir) => {
+          onChange(dir);
+          setBrowserOpen(false);
+        }}
+        onClose={() => setBrowserOpen(false)}
+      />
     </div>
   );
 }
