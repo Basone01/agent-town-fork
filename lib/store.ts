@@ -70,6 +70,7 @@ interface StudioContextValue {
     overrides?: { message?: string; title?: string; workspace?: string; seatId?: string },
   ) => void;
   deleteTask: (taskId: string) => void;
+  retryTask: (taskId: string) => void;
   updateSeatConfig: (seatId: string, patch: Partial<SeatState>) => void;
   newSession: () => void;
   switchSession: (sessionKey: string) => void;
@@ -310,6 +311,26 @@ export function StudioProvider({ children }: { children: ReactNode }) {
     dispatchRef.current({ type: "UPDATE_SEAT_CONFIG", seatId, patch });
   }, []);
 
+  // When a fresh task arrives (no explicit session target), always start it in
+  // a new session so each task gets an isolated conversation context.
+  const assignTask = useCallback(
+    (message: string, seatId?: string, sessionKey?: string, workspace?: string, title?: string) => {
+      if (!sessionKey) session.newSession();
+      taskRouter.assignTask(message, seatId, sessionKey, workspace, title);
+    },
+    [session, taskRouter],
+  );
+
+  // Re-run a failed/interrupted task from scratch in a fresh session.
+  const retryTask = useCallback(
+    (taskId: string) => {
+      const task = findTask(tasksRef.current, taskId);
+      if (!task) return;
+      assignTask(task.message, task.seatId, undefined, task.workspace, task.title);
+    },
+    [assignTask, tasksRef],
+  );
+
   return React.createElement(
     StudioContext.Provider,
     {
@@ -317,11 +338,12 @@ export function StudioProvider({ children }: { children: ReactNode }) {
         state,
         connect: gateway.connect,
         disconnect: gateway.disconnect,
-        assignTask: taskRouter.assignTask,
+        assignTask,
         saveDraft: taskRouter.saveDraft,
         updateDraft: taskRouter.updateDraft,
         assignDraft: taskRouter.assignDraft,
         deleteTask: taskRouter.deleteTask,
+        retryTask,
         updateSeatConfig,
         newSession: session.newSession,
         switchSession: session.switchSession,
