@@ -65,11 +65,15 @@ export type TaskStatus =
 
 export interface TaskItem {
   taskId: string;
+  /** Short display name set when drafting a task. */
+  title?: string;
   message: string;
   status: TaskStatus;
   runId?: string;
   seatId?: string;
   sessionKey: string;
+  /** Working directory the agent runs this task in. Unset = server's default workspace. */
+  workspace?: string;
   actorName?: string;
   result?: string;
   createdAt: string;

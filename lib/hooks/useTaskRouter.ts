@@ -65,6 +65,8 @@ export function useTaskRouter(refs: TaskRouterRefs) {
           seatLabel: seat?.label,
           seatRole: seat?.roleTitle,
           model: seat?.model,
+          // Per-task working directory; unset falls back to the server default.
+          workspace: task?.workspace,
         })
         .then((res: GatewayFrame) => {
           const runId = (res.payload?.runId as string) ?? undefined;
@@ -114,7 +116,13 @@ export function useTaskRouter(refs: TaskRouterRefs) {
   );
 
   const assignTask = useCallback(
-    (message: string, seatId?: string, targetSessionKey?: string) => {
+    (
+      message: string,
+      seatId?: string,
+      targetSessionKey?: string,
+      workspace?: string,
+      title?: string,
+    ) => {
       const client = refs.clientRef.current;
       if (!client || client.status !== "connected") return;
 
@@ -128,10 +136,12 @@ export function useTaskRouter(refs: TaskRouterRefs) {
         type: "ADD_TASK",
         task: {
           taskId,
+          title: title?.trim() || undefined,
           message,
           status: "submitted",
           sessionKey,
           seatId,
+          workspace: workspace?.trim() || undefined,
           actorName,
           createdAt: new Date().toISOString(),
         },

@@ -23,6 +23,7 @@ import {
   validateDispatchSecret as auggieValidate,
   setWorkerRoster as auggieSetRoster,
 } from "./lib/auggie-bridge.mjs";
+import { handlePickDirectory } from "./lib/pick-directory.mjs";
 
 const log = createLogger("Server");
 
@@ -145,6 +146,10 @@ app
       }
       if (req.url === "/api/internal/seat-sync") {
         handleSeatSync(req, res);
+        return;
+      }
+      if (req.url === "/api/internal/pick-directory") {
+        handlePickDirectory(req, res);
         return;
       }
       handle(req, res);

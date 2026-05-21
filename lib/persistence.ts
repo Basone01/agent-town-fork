@@ -23,6 +23,7 @@ import {
   LS_SEAT_CONFIG,
   LS_BGM_VOLUME,
   LS_ONBOARDING_DONE,
+  LS_FAVORITE_WORKSPACES,
   DEFAULT_BGM_VOLUME,
   MAX_SESSIONS,
 } from "./constants";
@@ -131,4 +132,13 @@ export function loadOnboardingDone(): boolean {
 
 export function saveOnboardingDone() {
   lsSet(LS_ONBOARDING_DONE, true);
+}
+
+export function loadFavoriteWorkspaces(): string[] {
+  const raw = lsGet<unknown[]>(LS_FAVORITE_WORKSPACES, []);
+  return raw.filter((entry): entry is string => typeof entry === "string");
+}
+
+export function saveFavoriteWorkspaces(dirs: string[]) {
+  lsSet(LS_FAVORITE_WORKSPACES, dirs.slice(0, 50));
 }

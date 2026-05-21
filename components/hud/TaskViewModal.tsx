@@ -10,6 +10,7 @@ import { gameEvents } from "@/lib/events";
 import { formatRelativeTime, isVisibleChatMessage } from "@/lib/constants";
 import Markdown from "./Markdown";
 import MessageBubble from "./MessageBubble";
+import WorkspaceField from "./WorkspaceField";
 
 type StatusFilter = "all" | "running" | "done" | "failed" | "stopped";
 type DetailTab = "result" | "conversation";
@@ -55,6 +56,8 @@ export default function TaskViewModal({
   const [filter, setFilter] = useState<StatusFilter>("all");
   const [tab, setTab] = useState<DetailTab>("result");
   const [draft, setDraft] = useState("");
+  // Working directory for the next follow-up — follows the selected task.
+  const [workspaceDraft, setWorkspaceDraft] = useState("");
   // Tracks which task's result was just copied — keyed by id so switching
   // tasks naturally clears the "Copied!" flash without an effect.
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -75,7 +78,7 @@ export default function TaskViewModal({
       if (filter !== "all" && STATUS_BUCKET[task.status] !== filter) return false;
       if (q) {
         const haystack =
-          `${task.message} ${task.result ?? ""} ${task.actorName ?? ""}`.toLowerCase();
+          `${task.title ?? ""} ${task.message} ${task.result ?? ""} ${task.actorName ?? ""}`.toLowerCase();
         if (!haystack.includes(q)) return false;
       }
       return true;
@@ -123,6 +126,13 @@ export default function TaskViewModal({
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [open, initialTaskId]);
 
+  // The workspace field follows the selected task — pre-filled with the dir
+  // that task ran in, so a follow-up stays put unless the user changes it.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync field to the selected task
+    setWorkspaceDraft(selected?.workspace ?? "");
+  }, [selected?.taskId, selected?.workspace]);
+
   // Escape closes (capture phase so it fires even from the inputs).
   useEffect(() => {
     if (!open) return;
@@ -168,7 +178,7 @@ export default function TaskViewModal({
     const text = draft.trim();
     if (!text || !selected || !isConnected) return;
     // Targets the task's own session — the bridge resumes it via --resume.
-    assignTask(text, selected.seatId, selected.sessionKey);
+    assignTask(text, selected.seatId, selected.sessionKey, workspaceDraft);
     setDraft("");
     setTab("conversation");
   };
@@ -248,7 +258,7 @@ export default function TaskViewModal({
                       {formatRelativeTime(task.completedAt ?? task.createdAt)}
                     </span>
                   </div>
-                  <div className="task-view-row__title">{task.message}</div>
+                  <div className="task-view-row__title">{task.title ?? task.message}</div>
                   <div className="task-view-row__sub">
                     {task.actorName ?? "Unassigned"} · {sessionLabel(task.sessionKey)}
                   </div>
@@ -263,6 +273,10 @@ export default function TaskViewModal({
               <div className="task-view-empty">Select a task to view its detail.</div>
             ) : (
               <>
+                {selected.title && (
+                  <div className="task-view-detail__heading">{selected.title}</div>
+                )}
+
                 <div className="task-view-detail__meta">
                   <span className={`hud-status hud-status--${selected.status}`}>
                     {statusLabel(selected.status)}
@@ -338,6 +352,15 @@ export default function TaskViewModal({
                       ))}
                     </div>
                   )}
+                </div>
+
+                {/* Working directory for the follow-up */}
+                <div className="task-view-workspace">
+                  <WorkspaceField
+                    value={workspaceDraft}
+                    onChange={setWorkspaceDraft}
+                    disabled={!isConnected}
+                  />
                 </div>
 
                 {/* Persistent continue-conversation row */}

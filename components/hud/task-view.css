@@ -144,6 +144,15 @@
 }
 
 /* ── detail ── */
+.task-view-detail__heading {
+  font-family: var(--pixel-font);
+  font-size: 13px;
+  color: var(--pixel-text);
+  padding: 12px 14px 0;
+  line-height: 1.4;
+  flex-shrink: 0;
+}
+
 .task-view-detail {
   flex: 1;
   min-width: 0;
@@ -205,13 +214,19 @@
   gap: 8px;
 }
 
+/* ── workspace dir row ── */
+.task-view-workspace {
+  padding: 10px 12px 0;
+  border-top: 2px solid var(--pixel-border);
+  flex-shrink: 0;
+}
+
 /* ── continue input row ── */
 .task-view-continue {
   display: flex;
   gap: 8px;
   align-items: center;
-  padding: 10px 12px;
-  border-top: 2px solid var(--pixel-border);
+  padding: 8px 12px 10px;
   flex-shrink: 0;
 }
 .task-view-continue__input {

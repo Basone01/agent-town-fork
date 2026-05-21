@@ -47,7 +47,13 @@ interface StudioContextValue {
   state: StudioSnapshot;
   connect: (config?: GatewayConfig) => void;
   disconnect: () => void;
-  assignTask: (message: string, seatId?: string, sessionKey?: string) => void;
+  assignTask: (
+    message: string,
+    seatId?: string,
+    sessionKey?: string,
+    workspace?: string,
+    title?: string,
+  ) => void;
   updateSeatConfig: (seatId: string, patch: Partial<SeatState>) => void;
   newSession: () => void;
   switchSession: (sessionKey: string) => void;
